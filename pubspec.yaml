@@ -1,4 +1,4 @@
-name: qr_code_extension
+name: code_extension
 description: A new Flutter project.
 
 # The following line prevents the package from being accidentally published to
@@ -34,7 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  qr_flutter: ^4.0.0
+  barcode_widget: ^2.0.4
+  pdf: ^3.10.1
+  barcode_image: ^2.0.3
+  file_selector: ^1.0.1
 
 dev_dependencies:
   flutter_test:
