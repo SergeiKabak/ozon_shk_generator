@@ -19,8 +19,9 @@ class _Code128State extends State<Code128> {
 
   @override
   void initState() {
-    _textController = TextEditingController(text: '0123456789');
-    conf.data = _textController.text;
+    super.initState();
+    _textController = TextEditingController();
+    conf.data = '123456789';
     _textFocus = FocusNode();
     _inputDecoration = InputDecoration(
       labelText: 'Штрих-код',
@@ -46,7 +47,6 @@ class _Code128State extends State<Code128> {
         borderRadius: BorderRadius.circular(16),
       ),
     );
-    super.initState();
   }
 
   @override
@@ -96,7 +96,7 @@ class Download extends StatelessWidget {
       data: Theme.of(context).copyWith(
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ButtonStyle(
-            backgroundColor: MaterialStateProperty.all<Color>(Colors.black),
+            backgroundColor: WidgetStateProperty.all<Color>(Colors.black),
           ),
         ),
       ),
@@ -105,24 +105,36 @@ class Download extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           ElevatedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             onPressed: conf.exportSvg,
             icon: const Icon(Icons.file_download),
             label: const Text('SVG'),
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             onPressed: conf.exportPng,
             icon: Icon(Icons.file_download),
             label: const Text('PNG'),
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             icon: Icon(Icons.file_download),
             onPressed: conf.exportPdf,
             label: const Text('PDF'),
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             onPressed: conf.exportA4Pdf,
             icon: const Icon(Icons.file_download),
             label: const Text('А4 PDF'),
