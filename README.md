@@ -11,7 +11,7 @@ To use this project as a Chrome extension, follow the steps below:
 1. Clone this project using:
    
     ```sh
-    git clone https://github.com/sbis04/flutter_qr_extension.git
+    git clone https://github.com/SergeiKabak/ozon_shk_generator
     ```
 
 2. From the project directory, run:
