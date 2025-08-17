@@ -98,28 +98,33 @@ class _Code128State extends State<Code128> {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
         body: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              BarcodeWidget(
-                padding: EdgeInsets.only(bottom: 32),
-                barcode: Barcode.code128(escapes: true),
-                data: _textController.text,
-                drawText: false,
-                width: 300,
-                height: 100,
-              ),
-              TextField(
-                controller: _textController,
-                focusNode: _textFocus,
-                maxLines: 1,
-                maxLength: 15,
-                decoration: _inputDecoration,
-                onChanged: (code) =>
-                    setState(() => conf.data = _textController.text),
-              ),
-              Download(conf: conf),
+              // AnimatedBuilder(
+              //   animation: conf,
+              //   builder: (_, __) => BarcodeWidget(
+              //     padding: EdgeInsets.only(bottom: 32),
+              //     barcode: Barcode.code128(escapes: true),
+              //     data: _textController.text,
+              //     drawText: false,
+              //     width: 300,
+              //     height: 100,
+              //   ),
+              // ),
+              // TextField(
+              //   controller: _textController,
+              //   focusNode: _textFocus,
+              //   maxLines: 1,
+              //   maxLength: 15,
+              //   decoration: _inputDecoration,
+              //   onChanged: (code) => conf.data = _textController.text,
+              // ),
+              // Download(conf: conf),
+              BarcodeIcon(),
             ],
           ),
         ),
@@ -148,6 +153,7 @@ class Download extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         mainAxisSize: MainAxisSize.min,
+        spacing: 8,
         children: [
           ElevatedButton.icon(
             style: ButtonStyle(
@@ -157,7 +163,6 @@ class Download extends StatelessWidget {
             icon: const Icon(Icons.file_download),
             label: const Text('SVG'),
           ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             style: ButtonStyle(
               foregroundColor: WidgetStateProperty.all(Colors.white),
@@ -166,7 +171,6 @@ class Download extends StatelessWidget {
             icon: Icon(Icons.file_download),
             label: const Text('PNG'),
           ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             style: ButtonStyle(
               foregroundColor: WidgetStateProperty.all(Colors.white),
@@ -175,15 +179,14 @@ class Download extends StatelessWidget {
             onPressed: conf.exportPdf,
             label: const Text('PDF'),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-            ),
-            onPressed: conf.exportA4Pdf,
-            icon: const Icon(Icons.file_download),
-            label: const Text('А4 PDF'),
-          ),
+          // ElevatedButton.icon(
+          //   style: ButtonStyle(
+          //     foregroundColor: WidgetStateProperty.all(Colors.white),
+          //   ),
+          //   onPressed: conf.exportA4Pdf,
+          //   icon: const Icon(Icons.file_download),
+          //   label: const Text('А4 PDF'),
+          // ),
         ],
       ),
     );
@@ -404,8 +407,7 @@ class BarcodeConf extends ChangeNotifier {
         width = 300;
         height = width;
         _defaultData = 'Hello World';
-        _desc =
-            'Named after the resemblance of the central finder pattern to an Aztec pyramid.';
+        _desc = 'Named after the resemblance of the central finder pattern to an Aztec pyramid.';
         _method = 'aztec()';
         _barcode = Barcode.aztec();
         break;
@@ -417,6 +419,14 @@ class BarcodeConf extends ChangeNotifier {
         _method = 'rm4scc()';
         _barcode = Barcode.rm4scc();
         break;
+      case BarcodeType.Postnet:
+        height = 60;
+        _defaultData = '55555-1237';
+        _desc =
+            'POSTNET (Postal Numeric Encoding Technique) is a barcode symbology used by the United States Postal Service to assist in directing mail.';
+        _method = 'postnet()';
+        _barcode = Barcode.postnet();
+        break;
     }
 
     notifyListeners();
@@ -425,21 +435,21 @@ class BarcodeConf extends ChangeNotifier {
   Future<void> exportPdf() async {
     final pdf = pw.Document(
       author: 'OZON',
-      title: this.barcode.name,
+      title: barcode.name,
     )..addPage(
         pw.Page(
           build: (context) => pw.Center(
             child: pw.Column(
               children: [
                 pw.BarcodeWidget(
-                  barcode: this.barcode,
-                  data: this.normalizedData,
+                  barcode: barcode,
+                  data: normalizedData,
                   width: 7 * PdfPageFormat.cm,
                   height: 2 * PdfPageFormat.cm,
                   drawText: false,
                 ),
                 pw.Text(
-                  this.normalizedData,
+                  normalizedData,
                   style: pw.TextStyle(fontSize: 21),
                 ),
               ],
@@ -452,7 +462,7 @@ class BarcodeConf extends ChangeNotifier {
     if (location != null) {
       final file = XFile.fromData(
         await pdf.save(),
-        name: '${this.normalizedData}.pdf',
+        name: '${normalizedData}.pdf',
         mimeType: 'application/pdf',
       );
       await file.saveTo(location.path);
@@ -466,7 +476,7 @@ class BarcodeConf extends ChangeNotifier {
         title: 'Возвратные ШК',
       );
       const scale = 7.0;
-      final List<String> digitsList = this.normalizedData.split('#').sublist(1);
+      final List<String> digitsList = normalizedData.split('#').sublist(1);
       final int codeDigitFormat = int.tryParse(digitsList.last) ?? 0;
 
       pdf.addPage(
@@ -483,15 +493,14 @@ class BarcodeConf extends ChangeNotifier {
               children: List.generate(
                 27,
                 (i) {
-                  final String code = '#${digitsList.first}#' +
-                      '${codeDigitFormat + i}'.padLeft(10, '0');
+                  final String code = '#${digitsList.first}#' + '${codeDigitFormat + i}'.padLeft(10, '0');
                   return pw.Column(
                     children: [
                       pw.BarcodeWidget(
-                        barcode: this.barcode,
+                        barcode: barcode,
                         data: code,
-                        width: this.width * PdfPageFormat.mm / scale,
-                        height: this.height * PdfPageFormat.mm / scale,
+                        width: width * PdfPageFormat.mm / scale,
+                        height: height * PdfPageFormat.mm / scale,
                         drawText: false,
                       ),
                       pw.Text(
@@ -511,7 +520,7 @@ class BarcodeConf extends ChangeNotifier {
       if (location != null) {
         final file = XFile.fromData(
           await pdf.save(),
-          name: '${this.normalizedData}.pdf',
+          name: '${normalizedData}.pdf',
           mimeType: 'application/pdf',
         );
         await file.saveTo(location.path);
@@ -522,20 +531,20 @@ class BarcodeConf extends ChangeNotifier {
   }
 
   Future<void> exportPng() async {
-    final bc = this.barcode;
+    final bc = barcode;
     final image = im.Image(
-      width: this.width.toInt() * 2,
-      height: this.height.toInt() * 2,
+      width: width.toInt() * 2,
+      height: height.toInt() * 2,
     );
     im.fill(image, color: im.ColorRgb8(255, 255, 255));
-    drawBarcode(image, bc, this.normalizedData, font: im.arial48);
+    drawBarcode(image, bc, normalizedData, font: im.arial48);
     final data = im.encodePng(image);
 
     final location = await getSaveLocation();
     if (location != null) {
       final file = XFile.fromData(
         Uint8List.fromList(data),
-        name: '${this.normalizedData}.png',
+        name: '${normalizedData}.png',
         mimeType: 'image/png',
       );
       await file.saveTo(location.path);
@@ -543,23 +552,309 @@ class BarcodeConf extends ChangeNotifier {
   }
 
   Future<void> exportSvg() async {
-    final bc = this.barcode;
+    final bc = barcode;
 
     final data = bc.toSvg(
-      this.normalizedData,
-      width: this.width,
-      height: this.height,
-      fontHeight: this.fontSize,
+      normalizedData,
+      width: width,
+      height: height,
+      fontHeight: fontSize,
     );
 
     final location = await getSaveLocation();
     if (location != null) {
       final file = XFile.fromData(
         Uint8List.fromList(utf8.encode(data)),
-        name: '${this.normalizedData}.svg',
+        name: '${normalizedData}.svg',
         mimeType: 'image/svg+xml',
       );
       await file.saveTo(location.path);
     }
   }
 }
+
+class BarcodePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw rectangle
+    final rectPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(8, 10, size.width, 16),
+      rectPaint,
+    );
+
+    // Draw text 2521555 9059 000
+    final textPainter = TextPainter(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: 'КТЯ',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 24,
+            ),
+          ),
+          TextSpan(text: '    '),
+          TextSpan(
+            text: '000000',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.normal,
+              fontFamily: 'Sans',
+            ),
+          ),
+          TextSpan(text: ' '),
+          TextSpan(
+            text: '9059',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Sans',
+            ),
+          ),
+          TextSpan(text: ' '),
+          TextSpan(
+            text: '000',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.normal,
+              fontFamily: 'Sans',
+            ),
+          ),
+        ],
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(size.width / 2 - textPainter.width / 2, 28)); // Adjusted for SVG middle alignment
+
+    canvas.save();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class BarcodeIcon extends StatelessWidget {
+  final double size;
+
+  const BarcodeIcon({super.key, this.size = 600});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: BarcodePainter(),
+      size: Size(335, 125),
+    );
+  }
+}
+
+// class BarcodePainter extends CustomPainter {
+//   // Code 128 encoding table (simplified for A, B, C subsets)
+//   static const Map<String, String> code128B = {
+//     '00': '212222',
+//     '01': '222122',
+//     '02': '222221',
+//     '03': '121223',
+//     '04': '121322',
+//     '05': '131222',
+//     '06': '122213',
+//     '07': '122312',
+//     '08': '132212',
+//     '09': '221213',
+//     '10': '221312',
+//     '11': '231212',
+//     '12': '212213',
+//     '13': '212312',
+//     '14': '213212',
+//     '15': '223112',
+//     '16': '312122',
+//     '17': '311222',
+//     '18': '321222',
+//     '19': '312212',
+//     '20': '322112',
+//     '21': '222113',
+//     '22': '312211',
+//     '23': '211213',
+//     '24': '211312',
+//     '25': '211311',
+//     '26': '221113',
+//     '27': '231113',
+//     '28': '213113',
+//     '29': '223113',
+//     '30': '311123',
+//     '31': '311223',
+//     '32': '321123',
+//     '33': '321123',
+//     '34': '322123',
+//     '35': '212123',
+//     '36': '212321',
+//     '37': '232121',
+//     '38': '111323',
+//     '39': '131123',
+//     '40': '111322',
+//     '41': '131122',
+//     '42': '121313',
+//     '43': '121312',
+//     '44': '131211',
+//     '45': '141211',
+//     '46': '221113',
+//     '47': '241111',
+//     '48': '231111',
+//     '49': '113123',
+//     '50': '123123',
+//     '51': '123121',
+//     '52': '121323',
+//     '53': '131123',
+//     '54': '111323',
+//     '55': '131123',
+//     '56': '113123',
+//     '57': '123123',
+//     '58': '123121',
+//     '59': '121323',
+//     '60': '321122',
+//     '61': '321221',
+//     '62': '312121',
+//     '63': '312221',
+//     '64': '322021',
+//     '65': '212221',
+//     '66': '211221',
+//     '67': '241121',
+//     '68': '221121',
+//     '69': '223121',
+//     '70': '213121',
+//     '71': '223121',
+//     '72': '312121',
+//     '73': '211121',
+//     '74': '211221',
+//     '75': '231121',
+//     '76': '213121',
+//     '77': '213221',
+//     '78': '219',
+//     '79': '211219',
+//     '80': '231219',
+//     '81': '213219',
+//     '82': '213319',
+//     '83': '211319',
+//     '84': '231319',
+//     '85': '213319',
+//     '86': '211229',
+//     '87': '231229',
+//     '88': '213229',
+//     '89': '213329',
+//     '90': '231129',
+//     '91': '232129',
+//     '92': '222229',
+//     '93': '222329',
+//     '94': '223229',
+//     '95': '211329',
+//     '96': '231129',
+//     '97': '213129',
+//     '98': '213229',
+//     '99': '219229',
+//   };
+
+//   String encodeCode128(String data) {
+//     // Start with Code B
+//     String encoded = '211214'; // Start B character
+//     int checksum = 104; // ASCII value for Code B start (104)
+
+//     for (int i = 0; i < data.length; i++) {
+//       String char = data[i];
+//       String code = code128B[char] ?? '';
+//       if (code.isNotEmpty) {
+//         encoded += code;
+//         checksum += (i + 1) * int.parse(char);
+//       }
+//     }
+
+//     // Checksum
+//     int checkDigit = checksum % 103;
+//     encoded += code128B[checkDigit.toString()] ?? '';
+
+//     // Stop character
+//     encoded += '2331112';
+
+//     return encoded;
+//   }
+
+//   @override
+//   void paint(Canvas canvas, Size size) {
+//     final scaleX = size.width / 300;
+//     final scaleY = size.height / 100;
+//     canvas.save();
+//     canvas.scale(scaleX, scaleY);
+
+//     // Background rectangle
+//     final rectPaint = Paint()
+//       ..color = Colors.white
+//       ..style = PaintingStyle.fill;
+//     canvas.drawRect(Rect.fromLTWH(0, 0, 300, 100), rectPaint);
+
+//     // Top black bar
+//     final topBarPaint = Paint()
+//       ..color = Colors.black
+//       ..style = PaintingStyle.fill;
+//     canvas.drawRect(Rect.fromLTWH(0, 0, 300, 10), topBarPaint);
+
+//     // Text "КТЯ 25215559059000"
+//     final textPainter = TextPainter(
+//       text: TextSpan(
+//         text: 'КТЯ 25215559059000',
+//         style: TextStyle(
+//           color: Colors.black,
+//           fontSize: 16,
+//           fontFamily: 'Arial',
+//         ),
+//       ),
+//       textDirection: TextDirection.ltr,
+//     );
+//     textPainter.layout();
+//     textPainter.paint(canvas, Offset(10, 15));
+
+//     // Encode data "25215559059000" using Code 128 B
+//     String barcodeData = '25215559059000';
+//     String pattern = encodeCode128(barcodeData);
+
+//     // Draw barcode bars
+//     final barPaint = Paint()
+//       ..color = Colors.black
+//       ..style = PaintingStyle.fill;
+//     double x = 50; // Start position
+//     const double unitWidth = 1.0;
+//     const double barHeight = 60;
+
+//     for (int i = 0; i < pattern.length; i++) {
+//       int width = int.parse(pattern[i]);
+//       if (width == 2) {
+//         canvas.drawRect(Rect.fromLTWH(x, 30, unitWidth, barHeight), barPaint);
+//       }
+//       x += width * unitWidth;
+//     }
+
+//     canvas.restore();
+//   }
+
+//   @override
+//   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+// }
+
+// class BarcodeIcon extends StatelessWidget {
+//   final double size;
+
+//   const BarcodeIcon({super.key, this.size = 300});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return CustomPaint(
+//       painter: BarcodePainter(),
+//       size: Size(size, size / 3),
+//     );
+//   }
+// }
