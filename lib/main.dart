@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-import 'dart:convert' show utf8;
-import 'dart:typed_data';
-
 import 'package:barcode_image/barcode_image.dart';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as im;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'dart:convert';
 
 void main() => runApp(const MyApp());
 
@@ -32,11 +30,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Flutter Chrome Extension',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
         home: const Code128(),
       );
 }
@@ -66,17 +59,14 @@ class _Code128State extends State<Code128> {
   void initState() {
     super.initState();
     _textController = TextEditingController();
-    conf.data = '123456789';
+    conf.type = BarcodeType.Code128;
+    conf.data = '00000000000000';
     _textFocus = FocusNode();
     _inputDecoration = InputDecoration(
       labelText: 'Штрих-код',
-      labelStyle: const TextStyle(
-        color: Color(0xFF80919F),
-      ),
+      labelStyle: const TextStyle(color: Color(0xFF80919F), fontSize: 22),
       hintText: 'Введите штрих-код',
-      hintStyle: const TextStyle(
-        color: Color(0xFF80919F),
-      ),
+      hintStyle: const TextStyle(color: Color(0xFF80919F), fontSize: 22),
       enabledBorder: OutlineInputBorder(
         borderSide: const BorderSide(
           color: Colors.black54,
@@ -97,34 +87,24 @@ class _Code128State extends State<Code128> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // AnimatedBuilder(
-              //   animation: conf,
-              //   builder: (_, __) => BarcodeWidget(
-              //     padding: EdgeInsets.only(bottom: 32),
-              //     barcode: Barcode.code128(escapes: true),
-              //     data: _textController.text,
-              //     drawText: false,
-              //     width: 300,
-              //     height: 100,
-              //   ),
-              // ),
-              // TextField(
-              //   controller: _textController,
-              //   focusNode: _textFocus,
-              //   maxLines: 1,
-              //   maxLength: 15,
-              //   decoration: _inputDecoration,
-              //   onChanged: (code) => conf.data = _textController.text,
-              // ),
-              // Download(conf: conf),
-              BarcodeIcon(),
+              TextField(
+                controller: _textController,
+                focusNode: _textFocus,
+                maxLines: 1,
+                maxLength: 16,
+                decoration: _inputDecoration,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9%]')),
+                ],
+                onChanged: (code) => conf.data = _textController.text,
+              ),
+              Download(conf: conf),
             ],
           ),
         ),
@@ -150,44 +130,12 @@ class Download extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        children: [
-          ElevatedButton.icon(
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-            ),
-            onPressed: conf.exportSvg,
-            icon: const Icon(Icons.file_download),
-            label: const Text('SVG'),
-          ),
-          ElevatedButton.icon(
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-            ),
-            onPressed: conf.exportPng,
-            icon: Icon(Icons.file_download),
-            label: const Text('PNG'),
-          ),
-          ElevatedButton.icon(
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-            ),
-            icon: Icon(Icons.file_download),
-            onPressed: conf.exportPdf,
-            label: const Text('PDF'),
-          ),
-          // ElevatedButton.icon(
-          //   style: ButtonStyle(
-          //     foregroundColor: WidgetStateProperty.all(Colors.white),
-          //   ),
-          //   onPressed: conf.exportA4Pdf,
-          //   icon: const Icon(Icons.file_download),
-          //   label: const Text('А4 PDF'),
-          // ),
-        ],
+      child: ElevatedButton(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.all(Colors.white),
+        ),
+        onPressed: conf.exportSvg,
+        child: const Text('SVG'),
       ),
     );
   }
@@ -195,10 +143,6 @@ class Download extends StatelessWidget {
 
 /// Barcode configuration
 class BarcodeConf extends ChangeNotifier {
-  BarcodeConf([BarcodeType initialType = BarcodeType.Code128]) {
-    type = initialType;
-  }
-
   String? _data;
 
   /// Data to encode
@@ -229,13 +173,13 @@ class BarcodeConf extends ChangeNotifier {
   late BarcodeType _type;
 
   /// Size of the font
-  double fontSize = 30;
+  double fontSize = 30.0;
 
   /// height of the barcode
-  double height = 160;
+  double height = 60.0;
 
   /// width of the barcode
-  double width = 400;
+  double width = 335.0;
 
   Barcode get barcode => _barcode;
 
@@ -248,10 +192,6 @@ class BarcodeConf extends ChangeNotifier {
 
   set type(BarcodeType value) {
     _type = value;
-
-    fontSize = 30;
-    height = 160;
-    width = 400;
 
     switch (_type) {
       case BarcodeType.Itf:
@@ -432,6 +372,96 @@ class BarcodeConf extends ChangeNotifier {
     notifyListeners();
   }
 
+  (String, String) splitCode(String code) {
+    // Extract all digits from the string
+    final digits = code.replaceAll(RegExp(r'%.*?%'), '');
+    if (code.length < 16) {
+      return ('0000000', '0000');
+    } else {
+      return (digits.substring(0, 7), digits.substring(7, digits.length));
+    }
+  }
+
+  String _d(double d) {
+    assert(d != double.infinity);
+    return d.toStringAsFixed(5);
+  }
+
+  String _s(String s) {
+    const esc = HtmlEscape();
+    return esc.convert(s);
+  }
+
+  String _c(int c) {
+    return '#${(c & 0xffffff).toRadixString(16).padLeft(6, '0')}';
+  }
+
+  String toSvg(
+    Iterable<BarcodeElement> recipe,
+    double width,
+    double height,
+    int color,
+  ) {
+    final path = StringBuffer();
+    final tSpan = StringBuffer();
+    /*<svg viewBox="0.0 0.0 335.0 126.0" xmlns="http://www.w3.org/2000/svg">
+  
+    <rect x="8" y="10" width="318" height="16" style="fill: #000000"/>
+  
+    <path transform="translate(8, 55)" d="M 0.00000 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 3.84615 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 10.25641 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 14.10256 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 19.23077 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 21.79487 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 28.20513 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 30.76923 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 35.89744 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 42.30769 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 48.71795 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 51.28205 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 56.41026 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 61.53846 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 66.66667 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 70.51282 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 75.64103 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 80.76923 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 84.61538 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 87.17949 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 93.58974 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 98.71795 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 103.84615 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 107.69231 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 112.82051 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 119.23077 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 123.07692 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 126.92308 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 130.76923 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 137.17949 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 141.02564 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 146.15385 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 152.56410 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 155.12821 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 160.25641 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 164.10256 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 169.23077 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 171.79487 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 178.20513 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 183.33333 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 189.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 194.87179 0.00000 h 1.28205 v 60.00000 h -1.28205 z M 197.43590 0.00000 h 2.56410 v 60.00000 h -2.56410 z M 201.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 215.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 220.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 230.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 240.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 250.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 260.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 270.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 280.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 290.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 300.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z M 310.74359 0.00000 h 3.84615 v 60.00000 h -3.84615 z" style="fill: #000000"/>
+  
+    <text transform="translate(75, 30)" style="fill: #000000; font-family: PT Sans;">
+    <tspan style="font-family: DejaVu Sans; font-size:18.0px;" x="0.0" y="16.0">КТЯ</tspan>
+    <tspan style="font-weight: normal; font-size:12.0px;" x="45.0" y="16.0">2121345</tspan>
+    <tspan style="font-weight: bold; font-size:18.0px;" x="100.0" y="16.0">5900</tspan>
+    <tspan style="font-weight: normal; font-size:12.0px;" x="150.0" y="16.0">000</tspan>
+ 
+    </text>
+    </svg>*/
+
+    // Draw the barcode
+    for (var elem in recipe) {
+      if (elem is BarcodeBar) {
+        if (elem.black) {
+          path.write('M ${_d(elem.left)} ${_d(elem.top)} ');
+          path.write('h ${_d(elem.width)} ');
+          path.write('v ${_d(elem.height)} ');
+          path.write('h ${_d(-elem.width)} ');
+          path.write('z ');
+        }
+      } else if (elem is BarcodeText) {
+        final (onePart, twoPart) = splitCode(elem.text);
+
+        tSpan.write(
+            '<text transform="translate(${_d(75)}, ${_d(20)})" style="fill: ${_c(color)}; font-family: ${_s('PT Sans')};">');
+        tSpan.write(
+            '<tspan style="font-family: ${_s('DejaVu Sans')}; font-size: ${_d(18)}px;" x="${_d(0)}" y="${_d(16)}">${_s('КТЯ')}</tspan>');
+        tSpan.write(
+            '<tspan style="font-weight: normal; font-size: ${_d(12)}px;" x="${_d(45)}" y="${_d(16)}">${_s(onePart)}</tspan>');
+        tSpan.write(
+            '<tspan style="font-weight: bold; font-size: ${_d(18)}px;" x="${_d(100)}" y="${_d(16)}">${_s(twoPart)}</tspan>');
+        tSpan.write(
+            '<tspan style="font-weight: normal; font-size: ${_d(12)}px;" x="${_d(150)}" y="${_d(16)}">${_s('000')}</tspan>');
+        tSpan.write('</text>');
+      }
+    }
+
+    final output = StringBuffer();
+
+    output.write('<svg viewBox="${_d(0)} ${_d(0)} ${_d(width)} ${_d(height)}" xmlns="http://www.w3.org/2000/svg">');
+
+    output
+        .write('<rect x="${_d(0)}" y="${_d(0)}" width="${_d(width)}" height="${_d(16)}" style="fill: ${_c(color)}"/>');
+
+    output.write('<path transform="translate(${_d(0)}, ${_d(40)})" d="$path" style="fill: ${_c(color)}"/>');
+
+    output.write(tSpan);
+
+    output.write('</svg>');
+
+    return output.toString();
+  }
+
   Future<void> exportPdf() async {
     final pdf = pw.Document(
       author: 'OZON',
@@ -553,13 +583,19 @@ class BarcodeConf extends ChangeNotifier {
 
   Future<void> exportSvg() async {
     final bc = barcode;
+    final fontHeight = height * 0.02;
+    final textPadding = height * 0.05;
 
-    final data = bc.toSvg(
+    final recipe = bc.make(
       normalizedData,
-      width: width,
-      height: height,
-      fontHeight: fontSize,
+      width: width.toDouble(),
+      height: height.toDouble(),
+      drawText: true,
+      fontHeight: fontHeight.toDouble(),
+      textPadding: textPadding.toDouble(),
     );
+
+    final data = toSvg(recipe, width, height, 000000);
 
     final location = await getSaveLocation();
     if (location != null) {
@@ -572,289 +608,3 @@ class BarcodeConf extends ChangeNotifier {
     }
   }
 }
-
-class BarcodePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw rectangle
-    final rectPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTWH(8, 10, size.width, 16),
-      rectPaint,
-    );
-
-    // Draw text 2521555 9059 000
-    final textPainter = TextPainter(
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: 'КТЯ',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 24,
-            ),
-          ),
-          TextSpan(text: '    '),
-          TextSpan(
-            text: '000000',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.normal,
-              fontFamily: 'Sans',
-            ),
-          ),
-          TextSpan(text: ' '),
-          TextSpan(
-            text: '9059',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Sans',
-            ),
-          ),
-          TextSpan(text: ' '),
-          TextSpan(
-            text: '000',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.normal,
-              fontFamily: 'Sans',
-            ),
-          ),
-        ],
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout();
-    textPainter.paint(canvas, Offset(size.width / 2 - textPainter.width / 2, 28)); // Adjusted for SVG middle alignment
-
-    canvas.save();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class BarcodeIcon extends StatelessWidget {
-  final double size;
-
-  const BarcodeIcon({super.key, this.size = 600});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: BarcodePainter(),
-      size: Size(335, 125),
-    );
-  }
-}
-
-// class BarcodePainter extends CustomPainter {
-//   // Code 128 encoding table (simplified for A, B, C subsets)
-//   static const Map<String, String> code128B = {
-//     '00': '212222',
-//     '01': '222122',
-//     '02': '222221',
-//     '03': '121223',
-//     '04': '121322',
-//     '05': '131222',
-//     '06': '122213',
-//     '07': '122312',
-//     '08': '132212',
-//     '09': '221213',
-//     '10': '221312',
-//     '11': '231212',
-//     '12': '212213',
-//     '13': '212312',
-//     '14': '213212',
-//     '15': '223112',
-//     '16': '312122',
-//     '17': '311222',
-//     '18': '321222',
-//     '19': '312212',
-//     '20': '322112',
-//     '21': '222113',
-//     '22': '312211',
-//     '23': '211213',
-//     '24': '211312',
-//     '25': '211311',
-//     '26': '221113',
-//     '27': '231113',
-//     '28': '213113',
-//     '29': '223113',
-//     '30': '311123',
-//     '31': '311223',
-//     '32': '321123',
-//     '33': '321123',
-//     '34': '322123',
-//     '35': '212123',
-//     '36': '212321',
-//     '37': '232121',
-//     '38': '111323',
-//     '39': '131123',
-//     '40': '111322',
-//     '41': '131122',
-//     '42': '121313',
-//     '43': '121312',
-//     '44': '131211',
-//     '45': '141211',
-//     '46': '221113',
-//     '47': '241111',
-//     '48': '231111',
-//     '49': '113123',
-//     '50': '123123',
-//     '51': '123121',
-//     '52': '121323',
-//     '53': '131123',
-//     '54': '111323',
-//     '55': '131123',
-//     '56': '113123',
-//     '57': '123123',
-//     '58': '123121',
-//     '59': '121323',
-//     '60': '321122',
-//     '61': '321221',
-//     '62': '312121',
-//     '63': '312221',
-//     '64': '322021',
-//     '65': '212221',
-//     '66': '211221',
-//     '67': '241121',
-//     '68': '221121',
-//     '69': '223121',
-//     '70': '213121',
-//     '71': '223121',
-//     '72': '312121',
-//     '73': '211121',
-//     '74': '211221',
-//     '75': '231121',
-//     '76': '213121',
-//     '77': '213221',
-//     '78': '219',
-//     '79': '211219',
-//     '80': '231219',
-//     '81': '213219',
-//     '82': '213319',
-//     '83': '211319',
-//     '84': '231319',
-//     '85': '213319',
-//     '86': '211229',
-//     '87': '231229',
-//     '88': '213229',
-//     '89': '213329',
-//     '90': '231129',
-//     '91': '232129',
-//     '92': '222229',
-//     '93': '222329',
-//     '94': '223229',
-//     '95': '211329',
-//     '96': '231129',
-//     '97': '213129',
-//     '98': '213229',
-//     '99': '219229',
-//   };
-
-//   String encodeCode128(String data) {
-//     // Start with Code B
-//     String encoded = '211214'; // Start B character
-//     int checksum = 104; // ASCII value for Code B start (104)
-
-//     for (int i = 0; i < data.length; i++) {
-//       String char = data[i];
-//       String code = code128B[char] ?? '';
-//       if (code.isNotEmpty) {
-//         encoded += code;
-//         checksum += (i + 1) * int.parse(char);
-//       }
-//     }
-
-//     // Checksum
-//     int checkDigit = checksum % 103;
-//     encoded += code128B[checkDigit.toString()] ?? '';
-
-//     // Stop character
-//     encoded += '2331112';
-
-//     return encoded;
-//   }
-
-//   @override
-//   void paint(Canvas canvas, Size size) {
-//     final scaleX = size.width / 300;
-//     final scaleY = size.height / 100;
-//     canvas.save();
-//     canvas.scale(scaleX, scaleY);
-
-//     // Background rectangle
-//     final rectPaint = Paint()
-//       ..color = Colors.white
-//       ..style = PaintingStyle.fill;
-//     canvas.drawRect(Rect.fromLTWH(0, 0, 300, 100), rectPaint);
-
-//     // Top black bar
-//     final topBarPaint = Paint()
-//       ..color = Colors.black
-//       ..style = PaintingStyle.fill;
-//     canvas.drawRect(Rect.fromLTWH(0, 0, 300, 10), topBarPaint);
-
-//     // Text "КТЯ 25215559059000"
-//     final textPainter = TextPainter(
-//       text: TextSpan(
-//         text: 'КТЯ 25215559059000',
-//         style: TextStyle(
-//           color: Colors.black,
-//           fontSize: 16,
-//           fontFamily: 'Arial',
-//         ),
-//       ),
-//       textDirection: TextDirection.ltr,
-//     );
-//     textPainter.layout();
-//     textPainter.paint(canvas, Offset(10, 15));
-
-//     // Encode data "25215559059000" using Code 128 B
-//     String barcodeData = '25215559059000';
-//     String pattern = encodeCode128(barcodeData);
-
-//     // Draw barcode bars
-//     final barPaint = Paint()
-//       ..color = Colors.black
-//       ..style = PaintingStyle.fill;
-//     double x = 50; // Start position
-//     const double unitWidth = 1.0;
-//     const double barHeight = 60;
-
-//     for (int i = 0; i < pattern.length; i++) {
-//       int width = int.parse(pattern[i]);
-//       if (width == 2) {
-//         canvas.drawRect(Rect.fromLTWH(x, 30, unitWidth, barHeight), barPaint);
-//       }
-//       x += width * unitWidth;
-//     }
-
-//     canvas.restore();
-//   }
-
-//   @override
-//   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-// }
-
-// class BarcodeIcon extends StatelessWidget {
-//   final double size;
-
-//   const BarcodeIcon({super.key, this.size = 300});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return CustomPaint(
-//       painter: BarcodePainter(),
-//       size: Size(size, size / 3),
-//     );
-//   }
-// }

@@ -12,10 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  barcode_widget: ^2.0.4
-  pdf: ^3.10.1
-  barcode_image: ^2.0.3
-  file_selector: ^1.0.1
+  barcode_widget: any
+  pdf: any
+  barcode_image: any
+  file_selector: any
 
 dev_dependencies:
   flutter_test:
@@ -28,12 +28,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  fonts:
-    - family: Sans
-      fonts:
-        - asset: fonts/PTSans-Regular.ttf
-          weight: 400
-        - asset: fonts/PTSans-Bold.ttf
-          weight: 700
-        
 

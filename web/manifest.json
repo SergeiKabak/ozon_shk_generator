@@ -1,12 +1,13 @@
 {
-  "name": "Code Extension",
-  "description": "Code Extension",
+  "name": "Генератор КТЯ",
+  "description": "Генератор КТЯ",
   "version": "1.0.0",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "downloads"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' ; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },
   "action": {
     "default_popup": "index.html"
