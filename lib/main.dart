@@ -134,8 +134,8 @@ class Download extends StatelessWidget {
         style: ButtonStyle(
           foregroundColor: WidgetStateProperty.all(Colors.white),
         ),
-        onPressed: conf.exportSvg,
-        child: const Text('SVG'),
+        onPressed: conf.export,
+        child: const Text('Сохранить'),
       ),
     );
   }
@@ -176,10 +176,10 @@ class BarcodeConf extends ChangeNotifier {
   double fontSize = 30.0;
 
   /// height of the barcode
-  double height = 60.0;
+  double height = PdfPageFormat.cm * 2.9;
 
   /// width of the barcode
-  double width = 335.0;
+  double width = PdfPageFormat.cm * 8.5;
 
   Barcode get barcode => _barcode;
 
@@ -398,8 +398,6 @@ class BarcodeConf extends ChangeNotifier {
 
   String toSvg(
     Iterable<BarcodeElement> recipe,
-    double width,
-    double height,
     int color,
   ) {
     final path = StringBuffer();
@@ -432,16 +430,19 @@ class BarcodeConf extends ChangeNotifier {
       } else if (elem is BarcodeText) {
         final (onePart, twoPart) = splitCode(elem.text);
 
-        tSpan.write(
-            '<text transform="translate(${_d(75)}, ${_d(20)})" style="fill: ${_c(color)}; font-family: ${_s('PT Sans')};">');
-        tSpan.write(
-            '<tspan style="font-family: ${_s('DejaVu Sans')}; font-size: ${_d(18)}px;" x="${_d(0)}" y="${_d(16)}">${_s('КТЯ')}</tspan>');
+        tSpan.write('<text transform="translate(${_d(35)}, ${_d(20)})" style="fill: ${_c(color)};">');
+
+        tSpan.write('<tspan style="font-size: ${_d(18)}px;" x="${_d(0)}" y="${_d(16)}">${_s('КТЯ')}</tspan>');
+
         tSpan.write(
             '<tspan style="font-weight: normal; font-size: ${_d(12)}px;" x="${_d(45)}" y="${_d(16)}">${_s(onePart)}</tspan>');
+
         tSpan.write(
             '<tspan style="font-weight: bold; font-size: ${_d(18)}px;" x="${_d(100)}" y="${_d(16)}">${_s(twoPart)}</tspan>');
+
         tSpan.write(
             '<tspan style="font-weight: normal; font-size: ${_d(12)}px;" x="${_d(150)}" y="${_d(16)}">${_s('000')}</tspan>');
+
         tSpan.write('</text>');
       }
     }
@@ -489,6 +490,7 @@ class BarcodeConf extends ChangeNotifier {
       );
 
     final location = await getSaveLocation();
+
     if (location != null) {
       final file = XFile.fromData(
         await pdf.save(),
@@ -595,7 +597,7 @@ class BarcodeConf extends ChangeNotifier {
       textPadding: textPadding.toDouble(),
     );
 
-    final data = toSvg(recipe, width, height, 000000);
+    final data = toSvg(recipe, 000000);
 
     final location = await getSaveLocation();
     if (location != null) {
@@ -603,6 +605,53 @@ class BarcodeConf extends ChangeNotifier {
         Uint8List.fromList(utf8.encode(data)),
         name: '${normalizedData}.svg',
         mimeType: 'image/svg+xml',
+      );
+      await file.saveTo(location.path);
+    }
+  }
+
+  Future<void> export() async {
+    final bc = barcode;
+    final fontHeight = height * 0.02;
+    final textPadding = height * 0.05;
+
+    final recipe = bc.make(
+      normalizedData,
+      width: width,
+      height: height,
+      drawText: true,
+      fontHeight: fontHeight.toDouble(),
+      textPadding: textPadding.toDouble(),
+    );
+
+    final svg = toSvg(recipe, 000000);
+
+    final font = await rootBundle.load('assets/DejaVuSans.ttf');
+
+    final svgImage = pw.SvgImage(
+      svg: svg,
+      width: width,
+      height: height,
+      customFontLookup: (_, __, ___) => pw.Font.ttf(font),
+    );
+
+    final pdf = pw.Document(
+      author: 'OZON',
+      title: barcode.name,
+    )..addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat(width, height),
+          build: (context) => svgImage,
+        ),
+      );
+
+    final location = await getSaveLocation();
+
+    if (location != null) {
+      final file = XFile.fromData(
+        await pdf.save(),
+        name: '${normalizedData}.pdf',
+        mimeType: 'application/pdf',
       );
       await file.saveTo(location.path);
     }
